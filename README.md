@@ -2,6 +2,12 @@
 
 Just build, and flash with PlatformIO and open a serial connection.
 
+Images:
+
+![Screenshot1](Screenshot1.png)
+![Screenshot2](Screenshot2.png)
+![Screenshot3](Screenshot3.png)
+
 https://emn178.github.io/online-tools/keccak_256.html
 https://www.getmonero.org/library/MoneroAddressesCheatsheet20201206.pdf
 https://gitlab.demlabs.net/cellframe/cellframe-sdk/-/blob/c83fbc812966aaf675c3f499c19c21dd888ea94d/3rdparty/monero_crypto/crypto_ops_builder/crypto-ops-old.c
