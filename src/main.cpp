@@ -10,6 +10,7 @@
 #include <esp_system.h>
 #include <esp_efuse.h>
 #include <esp_efuse_table.h>
+
 #include "utils/clear_screen.hpp"
 #include "utils/mnemonic.hpp"
 #include "crypto/hash/keccak256_hash.hpp"
@@ -20,6 +21,7 @@
 #include "crypto/hash/whirlpool.hpp"
 #include "globals.hpp"
 #include "utils/print_colored.hpp"
+
 XRNG xrng;
 
 void setup() {
@@ -37,21 +39,20 @@ void setup() {
     {
       clearScreen();
 
+      /*bool secure_boot_enabled = esp_efuse_read_field_bit(ESP_EFUSE_SECURE_BOOT_EN);
+      Serial.print("Secure Boot:   ");
+      if (secure_boot_enabled) {
+        printlnColored(ANSI_GREEN, "ENABLED");
+      } else {
+        printlnColored(ANSI_RED, "DISABLED");
+      }*/
 
       bool dis_download_mode_enabled = esp_efuse_read_field_bit(ESP_EFUSE_DIS_DOWNLOAD_MODE);
-      Serial.print("Download mode enabled: ");
+      Serial.print("Download mode: ");
       if (dis_download_mode_enabled) {
-        printlnColored(ANSI_GREEN, "ENABLED");
+        printlnColored(ANSI_GREEN, "DISABLED");
       } else {
-        printlnColored(ANSI_RED, "DISABLED");
-      }
-
-      bool dis_usb_jtag = esp_efuse_read_field_bit(ESP_EFUSE_DIS_USB_JTAG);
-      Serial.print("USB JTAG disabled:     ");
-      if (dis_usb_jtag) {
-        printlnColored(ANSI_GREEN, "ENABLED");
-      } else {
-        printlnColored(ANSI_RED, "DISABLED");
+        printlnColored(ANSI_RED, "ENABLED");
       }
 
       const esp_partition_t* running = esp_ota_get_running_partition();
@@ -73,7 +74,7 @@ void setup() {
         Serial.print(sha256[i], HEX);
       }
       Serial.println();
-      
+      Serial.println();
       Serial.println("Press boot key to start...");
     }
     delay(20);
@@ -126,6 +127,7 @@ void loop() {
   moneroAddress[96] = '\0';
   Serial.print("Monero Address: ");
   Serial.println(moneroAddress);
+  Serial.println();
   
   // Prepare monero address with prefix for QR code
   char qrAddress[110];
@@ -139,7 +141,7 @@ void loop() {
   {
     printColored(ANSI_WHITE, "██");
   }
-  Serial.println("");
+  Serial.println();
   for (uint8_t y = 0; y < qrcode.size; y++) {
     printColored(ANSI_WHITE, "██");
     for (uint8_t x = 0; x < qrcode.size; x++) {
@@ -150,13 +152,14 @@ void loop() {
         }
     }
     printColored(ANSI_WHITE, "██");
-    Serial.println("");
+    Serial.println();
   }
   for(uint8_t i = 0; i < qrcode.size+2; i++)
   {
     printColored(ANSI_WHITE, "██");
   }
-  Serial.println("");
+  Serial.println();
+  Serial.println();
   Serial.println("Press boot key to generate another...");
   delay(1000);
 
