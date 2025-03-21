@@ -1,4 +1,4 @@
-#include "hash.hpp"
+#include "crc32.hpp"
 
 uint32_t crc32(const char *s, size_t length) {
     uint32_t crc = 0xFFFFFFFF;
@@ -12,12 +12,3 @@ uint32_t crc32(const char *s, size_t length) {
     }
     return ~crc;
 }
-
-void keccak256_hash(const uint8_t* input, size_t input_len, uint8_t* output) {
-    KeccakCore keccak;
-    keccak.setCapacity(256 * 2);
-    keccak.reset();
-    keccak.update(input, input_len);
-    keccak.pad(0x01);
-    keccak.extract(output, 32);
-} 

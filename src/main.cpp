@@ -1,35 +1,106 @@
+#include <esp_efuse.h>
 #include <Arduino.h>
-#include "mnemonic.hpp"
-#include "hash.hpp"
-#include "reduce.hpp"
-#include "keygen.hpp"
-#include "base58.hpp"
-#include "address.hpp"
+#include <SHA3.h>
+#include <BLAKE2s.h>
+#include <SHA384.h>
+#include <RNG.h>
 #include <qrcode.h>
+#include <esp_ota_ops.h>
+#include <esp_partition.h>
+#include <esp_system.h>
+#include <esp_efuse.h>
+#include <esp_efuse_table.h>
+#include "utils/clear_screen.hpp"
+#include "utils/mnemonic.hpp"
+#include "crypto/hash/keccak256_hash.hpp"
+#include "crypto/ecc/reduce.hpp"
+#include "crypto/monero/keygen.hpp"
+#include "utils/base58.hpp"
+#include "crypto/monero/address.hpp"
+#include "crypto/hash/whirlpool.hpp"
+#include "globals.hpp"
+#include "utils/print_colored.hpp"
+XRNG xrng;
 
 void setup() {
   Serial.begin(115200);
-  delay(5000);
+  delay(4000);
 
-  Serial.println("Starting...");
+	RNG.begin(RNG_STARTVALUE);
+	RNG.addNoiseSource(xrng);
 
-  uint8_t testSeed[32] = {
-    0x9f, 0x86, 0xd0, 0x81, 0x88, 0x4c, 0x7d, 0x65,
-    0x9a, 0x2f, 0xea, 0xa0, 0xc5, 0x5a, 0xd0, 0x15,
-    0xa3, 0xbf, 0x4f, 0x1b, 0x2b, 0x0b, 0x82, 0x2c,
-    0xd1, 0x5d, 0x6c, 0x15, 0xb0, 0xf0, 0x0a, 0x08
-  };
-  
+  pinMode(9, INPUT_PULLUP);
+  int i = 0;
+  while(digitalRead(9) == HIGH)
+  {
+    if(i % 25 == 0)
+    {
+      clearScreen();
+
+
+      bool dis_download_mode_enabled = esp_efuse_read_field_bit(ESP_EFUSE_DIS_DOWNLOAD_MODE);
+      Serial.print("Download mode enabled: ");
+      if (dis_download_mode_enabled) {
+        printlnColored(ANSI_GREEN, "ENABLED");
+      } else {
+        printlnColored(ANSI_RED, "DISABLED");
+      }
+
+      bool dis_usb_jtag = esp_efuse_read_field_bit(ESP_EFUSE_DIS_USB_JTAG);
+      Serial.print("USB JTAG disabled:     ");
+      if (dis_usb_jtag) {
+        printlnColored(ANSI_GREEN, "ENABLED");
+      } else {
+        printlnColored(ANSI_RED, "DISABLED");
+      }
+
+      const esp_partition_t* running = esp_ota_get_running_partition();
+      if (running == nullptr) {
+          Serial.println("Error getting running partition");
+          return;
+      }
+
+      uint8_t sha256[32] = {0};  
+      esp_partition_get_sha256(running, sha256);
+
+      Serial.print("Current Firmware Hash (SHA-256): ");
+      for (int i = 0; i < 32; i++)
+      {
+        if (sha256[i] < 0x10)
+        {
+          Serial.print("0");
+        }
+        Serial.print(sha256[i], HEX);
+      }
+      Serial.println();
+      
+      Serial.println("Press boot key to start...");
+    }
+    delay(20);
+    i++;
+  }
+  delay(500);
+}
+
+void loop() {
+  clearScreen();
+	Serial.println("Generating...");
+	while(!RNG.available(32)){RNG.loop();};
+	
+	uint8_t testSeed[32];
+	RNG.rand(testSeed, 32);
+
   char mnemonicPhrase[25 * LONGEST_WORD + 25];
   getPhrase(testSeed, mnemonicPhrase);
-  Serial.println("Generated mnemonic phrase:");
+  clearScreen();
   Serial.println(mnemonicPhrase);
+  Serial.println("");
 
   uint8_t publicSpendKey[32];
   uint8_t publicViewKey[32];
   deriveMoneroKeys(testSeed, publicSpendKey, publicViewKey);
   
-  Serial.print("Public Spend Key: ");
+  /*Serial.print("Public Spend Key: ");
   for (int i = 0; i < 32; i++) {
     if (publicSpendKey[i] < 0x10) Serial.print("0");
     Serial.print(publicSpendKey[i], HEX);
@@ -41,33 +112,56 @@ void setup() {
     if (publicViewKey[i] < 0x10) Serial.print("0");
     Serial.print(publicViewKey[i], HEX);
   }
-  Serial.println();
+  Serial.println();*/
   
-  char moneroAddress[95+1];
+  Serial.println("Press boot key to continue...");
+  delay(1000);
+  while(digitalRead(9) == HIGH)
+  {
+    delay(10);
+  }
+  clearScreen();
+  char moneroAddress[96+1];
   createMoneroAddress(publicSpendKey, publicViewKey, moneroAddress);
-  moneroAddress[95] = '\0';
-  Serial.print("Monero Address: 4");
+  moneroAddress[96] = '\0';
+  Serial.print("Monero Address: ");
   Serial.println(moneroAddress);
   
   // Prepare monero address with prefix for QR code
   char qrAddress[110];
-  strcpy(qrAddress, "monero:4");
+  strcpy(qrAddress, "monero:");
   strcat(qrAddress, moneroAddress);
-  
-  /*QRCode qrcode;
-  uint8_t qrcodeBytes[qrcode_getBufferSize(4)];
-  qrcode_initText(&qrcode, qrcodeBytes, 6, ECC_MEDIUM, qrAddress);
+
+  QRCode qrcode;
+  uint8_t qrcodeBytes[qrcode_getBufferSize(5)];
+  qrcode_initText(&qrcode, qrcodeBytes, 5, ECC_LOW, qrAddress);
+  for(uint8_t i = 0; i < qrcode.size+2; i++)
+  {
+    printColored(ANSI_WHITE, "██");
+  }
+  Serial.println("");
   for (uint8_t y = 0; y < qrcode.size; y++) {
+    printColored(ANSI_WHITE, "██");
     for (uint8_t x = 0; x < qrcode.size; x++) {
         if (qrcode_getModule(&qrcode, x, y)) {
           Serial.print("  ");
         } else {
-            Serial.print("\033[47m██\033[0m");
+            printColored(ANSI_WHITE, "██");
         }
     }
+    printColored(ANSI_WHITE, "██");
     Serial.println("");
-  }*/
-}
+  }
+  for(uint8_t i = 0; i < qrcode.size+2; i++)
+  {
+    printColored(ANSI_WHITE, "██");
+  }
+  Serial.println("");
+  Serial.println("Press boot key to generate another...");
+  delay(1000);
 
-void loop() {
+  while(digitalRead(9) == HIGH)
+  {
+    delay(10);
+  }
 }

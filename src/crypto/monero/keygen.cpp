@@ -20,23 +20,23 @@ void deriveMoneroKeys(const uint8_t* privateSeed, uint8_t* publicSpendKey, uint8
     memcpy(secretSpendKey, privateSeed, 32);
     sc_reduce32(secretSpendKey);
     
-    Serial.print("Private Spend Key: ");
+    /*Serial.print("Private Spend Key: ");
     for (int i = 0; i < 32; i++) {
         if (secretSpendKey[i] < 0x10) Serial.print("0");
         Serial.print(secretSpendKey[i], HEX);
     }
-    Serial.println();
+    Serial.println();*/
     
     keccak256_hash(secretSpendKey, 32, secretViewKey);
     
     sc_reduce32(secretViewKey);
     
-    Serial.print("Private View Key: ");
+    /*Serial.print("Private View Key: ");
     for (int i = 0; i < 32; i++) {
         if (secretViewKey[i] < 0x10) Serial.print("0");
         Serial.print(secretViewKey[i], HEX);
     }
-    Serial.println();
+    Serial.println();*/
     
     generateMoneroPublicKey(secretSpendKey, publicSpendKey);
     

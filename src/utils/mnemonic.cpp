@@ -1,5 +1,5 @@
 #include "mnemonic.hpp"
-#include "hash.hpp"
+#include "utils/crc32.hpp"
 
 char word_buffer[LONGEST_WORD + 1];
 
